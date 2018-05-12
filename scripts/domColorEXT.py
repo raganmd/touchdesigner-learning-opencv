@@ -1,33 +1,54 @@
+'''
+	matthew ragan | matthewragan.com
+'''
+
 import sys
 import cv2
 import webbrowser
 import numpy
 from sklearn.cluster import KMeans
 
-'''
-
-'''
-
 class DomColor:
 	'''
 		A tool for finding Dominant Color with openCV.
+
+		Here we find an attempt at locating dominant colors from a source image with openCV
+		and KMeans clustering. The large idea is to sample colors from a source image build
+		averages from clustered samples and return a best estimation of dominant color. While
+		this works well, it's not perfect, and in this class you'll find a number of helper
+		methods to resolve some of the shortcomings of this process. 
+
+		Procedurally, you'll find that that the process starts by saving out a small
+		resolution version of the sampled file. This is then hadned over to openCV
+		for some preliminary analysis before being again handed over to sklearn
+		(sci-kit learn) for the KMeans portion of the process. While there is a built-in
+		function for KMeans sorting in openCV the sklearn method is a little less cumbersom
+		and has better reference documentation for building functionality. After the clustering
+		process each resulting sample is processed to find its luminance. Luminance values
+		outside of the set bounds are discarded before assembling a final array of pixel values
+		to be used. 
+
+		It's worth noting that this method relies on a number of additional python libraries.
+		These can all be pip installed, and the recomended build appraoch here would be to
+		use Python35. In the developers experience this produces the least number of errors
+		and issues - and boy did the developer stumble along the way here.
 
 		python dependencies
 		> numpy
 		> scipy
 		> sklearn
 		> cv2
-		> webbrowser
-		> sys
 
 		references
 		> https://buzzrobot.com/dominant-colors-in-an-image-using-k-means-clustering-3c7af4622036
 		> https://gist.github.com/skt7/71044f42f9323daec3aa035cd050884e
 		> https://www.pyimagesearch.com/2014/05/26/opencv-python-k-means-color-clustering/
 
-		Notes
+		ToDo
 		---------------
-		Your notes about the class go here
+		[ ] consider a slightly different approach vs. using a ramp TOP
+		[ ] look into running the openCV process in another thread to avoid blocking
+		[ ] add button to allow the user to check if all the python bits have been imported
 	'''
 
 	def __init__(self):
@@ -48,9 +69,13 @@ class DomColor:
 
 	def Fill_ramp(self, sorted_colors=None):
 		'''
-			This is a sample method.
+			Fill the target network ramp with dominant colors.
 
-			The longer description goes here
+			While this is not a partciularly exciting process, this is an essentail element
+			in the resulting process. This clears a table DAT of any results, then first
+			normalizes the results, discards vals that are outside of the set luminosity range
+			then fills in the target table with the results. This is the last step in the 
+			process of finding dominant color
 			
 			Notes
 			---------------
@@ -58,11 +83,14 @@ class DomColor:
 
 			Args
 			---------------
-
+			sorted_colors (numpy_array)
+			> a list of lists containing the results of the KMeans process. These are
+			> used to generate the final pixel values that are returned from this
+			> module.
 
 			Returns
 			---------------
-			
+			none
 		'''	
 		self.RampDAT.clear()
 		self.RampDAT.appendRow(self.RampHeaders)
@@ -135,7 +163,7 @@ class DomColor:
 		labels                  = kmeans.labels_
 		ramp_colors             = colors.astype(int)
 		lumin_list              = []
-		colors_forDAT            = []
+		colors_forDAT           = []
 
 		for color in enumerate(ramp_colors):
 			R       = color[1][0]
