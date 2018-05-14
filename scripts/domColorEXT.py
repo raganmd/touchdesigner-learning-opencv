@@ -3,6 +3,7 @@
 '''
 
 import sys
+import os
 import cv2
 import webbrowser
 import numpy
@@ -59,10 +60,11 @@ class DomColor:
 		self.RampDAT				= op('ramp1_keys')
 		self.SourceImgTOP			= op('null1')
 		self.RampHeaders 			= ['pos', 'r', 'g', 'b', 'luminosity', 'a']
-		self.ExternalsImport 		= False
 		self.LuminList 				= []
 		self.ColorsForDAT 			= []
-		self.LuminRange 			= (0.2, 0.95)
+		self.LuminRange 			= (0, 1)
+
+		self.GlslTOP 				= op('glslmulti1')
 		print("Dominant Color Init")
 
 		return
@@ -92,6 +94,7 @@ class DomColor:
 			---------------
 			none
 		'''	
+		# clear and setup ramp for new keys
 		self.RampDAT.clear()
 		self.RampDAT.appendRow(self.RampHeaders)
 
@@ -123,6 +126,8 @@ class DomColor:
 				item[1].append(1)
 
 				self.RampDAT.appendRow(item[1])
+			
+			self.GlslTOP.par.resolutionw 	= len(self.ColorsForDAT)
 
 		return
 
@@ -144,8 +149,19 @@ class DomColor:
 			---------------
 			
 		'''
-
 		colorImgFilePath 		= "{project}/{temp}/temp_img.jpg".format(project=project.folder, temp=self.TempFolder)
+		colorImgDir 			= "{project}/{temp}".format(project=project.folder, temp=self.TempFolder)
+
+		# clear previous results
+		self.LuminList 			= []
+		self.ColorsForDAT 		= []
+
+		# grab bounds parameters
+		self.LuminRange 		= (parent().par.Lbounds1.val, parent().par.Lbounds2.val)
+
+		# check to see if the temp directory exists and make it if it's not there
+		self.Check_path(colorImgDir)
+
 		self.SourceImgTOP.save( colorImgFilePath , async=False )
 
 		# open image with openCV
@@ -156,8 +172,8 @@ class DomColor:
 		# reshape the data
 		img                     = img.reshape(img.shape[0] * img.shape[1], 3)
 
+		# kmeans process
 		kmeans                  = KMeans(n_clusters=self.Clusters.val)
-
 		kmeans.fit(img)
 		colors                  = kmeans.cluster_centers_
 		labels                  = kmeans.labels_
@@ -165,17 +181,15 @@ class DomColor:
 		lumin_list              = []
 		colors_forDAT           = []
 
-		for color in enumerate(ramp_colors):
-			R       = color[1][0]
-			G       = color[1][1]
-			B       = color[1][2]
-			
-			luminosity          = math.sqrt((0.299 * (R*R)) + (0.587 * (G*G)) + (0.114 * (B*B)))
-			lumin_list.append(luminosity)
+		# calculate and add luminosity to the color
+		for color in ramp_colors:
+			lumin_list.append(self.Calculate_luminance(color))
 
+		# add luimin to numpy array, sort based on luminosity
 		color_and_lumin         = numpy.insert(ramp_colors, 3, lumin_list, axis=1)
 		sorted_colors           = sorted(color_and_lumin, key=lambda x: x[3])
 
+		# fill ramp colors
 		self.Fill_ramp(sorted_colors)
 
 		return
@@ -223,10 +237,11 @@ of Python.
 			pass
 
 		else:
+			
+			
 			# safe attempts to check for sklearn module
 			try:
 				from sklearn.cluster import KMeans
-				self.ExternalsImport 	= False
 				print("Loading sklearn sucessful")
 
 			# warn the user that import failed
@@ -271,6 +286,31 @@ of Python.
 		G =	rgbVal[1]
 		B = rgbVal[2]
 
-		luminance = math.sqrt(0.299 * (R*R) + 0.587 * (G*G) + 0.114 * (B*B))
+		luminance = math.sqrt((0.299 * (R*R)) + (0.587 * (G*G)) + (0.114 * (B*B)))
 
 		return luminance
+	
+	def Check_path(self, colorImgDir):
+		'''
+			This is a sample method.
+
+			The longer description goes here
+			
+			Notes
+			---------------
+			
+
+			Args
+			---------------
+			colrImgDir (str):
+			> a file path to check for existing
+
+			Returns
+			---------------
+			none
+		'''
+		if os.path.isdir(colorImgDir):
+			pass
+		else:
+			os.mkdir(colorImgDir)
+		return
